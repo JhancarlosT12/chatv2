@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crear Agente de IA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full">
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Crea tu Chatbot de IA</h1>
+
+    <div class="mb-6">
+      <h2 class="text-xl font-semibold text-gray-700 mb-2">Paso 1: Sube un Documento</h2>
+      <input type="file" id="documentInput" accept=".pdf,.txt" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+      <button onclick="uploadDocument()" class="mt-3 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">Subir y Entrenar</button>
+      <div id="progress" class="hidden mt-2 w-full bg-gray-200 rounded-full h-2.5">
+        <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <div class="mb-6">
+      <h2 class="text-xl font-semibold text-gray-700 mb-2">Paso 2: Personaliza tu Chatbot</h2>
+      <div class="mb-3">
+        <label for="botName" class="block text-gray-700 font-medium mb-1">Nombre del Chatbot</label>
+        <input type="text" id="botName" placeholder="Ej. Asistente de Soporte" class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div class="mb-3">
+        <label for="botGreeting" class="block text-gray-700 font-medium mb-1">Mensaje de Bienvenida</label>
+        <input type="text" id="botGreeting" placeholder="Ej. ¡Hola! ¿En qué te ayudo?" class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div class="mb-3">
+        <label for="botColor" class="block text-gray-700 font-medium mb-1">Color Principal del Chat</label>
+        <input type="color" id="botColor" value="#007bff" class="w-full h-10 border rounded-lg">
+      </div>
+      <div class="mb-3">
+        <label for="botIcon" class="block text-gray-700 font-medium mb-1">Icono de la Burbuja</label>
+        <select id="botIcon" class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="💬">💬 Chat</option>
+          <option value="🤖">🤖 Robot</option>
+          <option value="❓">❓ Ayuda</option>
+          <option value="👋">👋 Saludo</option>
+          <option value="📱">📱 Móvil</option>
+          <option value="💡">💡 Idea</option>
+        </select>
+      </div>
+      <button onclick="generateChatbot()" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">Generar Chatbot</button>
+    </div>
+
+    <div class="mb-6">
+      <h2 class="text-xl font-semibold text-gray-700 mb-2">Paso 3: Incrusta en tu Sitio Web</h2>
+      <div id="chatbot-code" class="bg-gray-100 p-4 rounded-lg text-sm text-gray-600 hidden mb-3 whitespace-pre-wrap"></div>
+      <button id="copy-code-btn" onclick="copyCode()" class="w-full bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700 transition hidden">Copiar Código</button>
+    </div>
+
+    <div>
+      <h2 class="text-xl font-semibold text-gray-700 mb-2">Previsualización</h2>
+      <div class="border rounded-lg p-4 bg-gray-50 h-64 relative overflow-hidden">
+        <div id="preview-placeholder" class="flex items-center justify-center h-full text-gray-400">
+          <p>Genera tu chatbot para ver la previsualización</p>
+        </div>
+        <div id="chatbot-preview" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      let chatbotId = null;
+      const API_BASE_URL = window.location.origin;
+
+      window.copyCode = function() {
+        const codeElement = document.getElementById('chatbot-code');
+        const textArea = document.createElement('textarea');
+        textArea.value = codeElement.textContent;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        const copyBtn = document.getElementById('copy-code-btn');
+        copyBtn.textContent = '¡Copiado!';
+        setTimeout(() => {
+          copyBtn.textContent = 'Copiar Código';
+        }, 2000);
+      };
+
+      window.uploadDocument = async function() {
+        const fileInput = document.getElementById('documentInput');
+        const file = fileInput.files[0];
+        if (!file) {
+          alert('Por favor, selecciona un documento.');
+          return;
+        }
+
+        const progress = document.getElementById('progress');
+        const progressBar = document.getElementById('progress-bar');
+        progress.classList.remove('hidden');
+        progressBar.style.width = '0%';
+
+        const formData = new FormData();
+        formData.append('document', file);
+
+        let progressValue = 0;
+        const progressInterval = setInterval(() => {
+          progressValue += 10;
+          progressBar.style.width = progressValue + '%';
+          if (progressValue >= 80) clearInterval(progressInterval);
+        }, 200);
+
+        try {
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Error en el servidor: ${response.status}`);
+          }
+
+          const result = await response.json();
+          clearInterval(progressInterval);
+          progressBar.style.width = '100%';
+
+          if (result.success && result.chatbotId) {
+            chatbotId = result.chatbotId;
+            alert('Documento subido y agente entrenado con éxito.');
+          } else {
+            throw new Error('Respuesta del servidor no válida');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          clearInterval(progressInterval);
+          progressBar.style.width = '0%';
+          alert(`Error: ${error.message}`);
+        }
+      };
+
+      window.generateChatbot = function() {
+        const botName = document.getElementById('botName').value || 'Asistente';
+        const botGreeting = document.getElementById('botGreeting').value || '¡Hola! ¿En qué te puedo ayudar hoy?';
+        const botColor = document.getElementById('botColor').value;
+        const botIcon = document.getElementById('botIcon').value;
+
+        if (!chatbotId) {
+          alert('Primero sube un documento para entrenar el agente.');
+          return;
+        }
+
+        const widgetCode = `
+<!-- Inicio del Widget de Chat IA -->
+<script>
+  (function() {
+    const iframe = document.createElement('iframe');
+    iframe.id = 'ia-chat-iframe';
+    iframe.src = "${API_BASE_URL}/api/chatbot/${chatbotId}?color=${encodeURIComponent(botColor)}&name=${encodeURIComponent(botName)}&icon=${encodeURIComponent(botIcon)}&mode=iframe";
+    iframe.style.border = 'none';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.display = 'block';
+    
+    const chatContainer = document.createElement('div');
+    chatContainer.id = 'ia-chat-container';
+    chatContainer.style.position = 'fixed';
+    chatContainer.style.bottom = '90px';
+    chatContainer.style.right = '20px';
+    chatContainer.style.width = '350px';
+    chatContainer.style.height = '500px';
+    chatContainer.style.borderRadius = '15px';
+    chatContainer.style.boxShadow = '0 5px 25px rgba(0, 0, 0, 0.15)';
+    chatContainer.style.overflow = 'hidden';
+    chatContainer.style.display = 'none';
+    chatContainer.style.zIndex = '9999';
+    chatContainer.appendChild(iframe);
+    
+    const mediaQuery = window.matchMedia('(max-width: 480px)');
+    const handleMediaChange = (e) => {
+      if (e.matches) {
+        chatContainer.style.width = 'calc(100% - 40px)';
+        chatContainer.style.height = 'calc(100% - 100px)';
+      } else {
+        chatContainer.style.width = '350px';
+        chatContainer.style.height = '500px';
+      }
+    };
+    
+    mediaQuery.addEventListener('change', handleMediaChange);
+    handleMediaChange(mediaQuery);
+    
+    const chatBubble = document.createElement('div');
+    chatBubble.id = 'ia-chat-bubble';
+    chatBubble.style.position = 'fixed';
+    chatBubble.style.bottom = '20px';
+    chatBubble.style.right = '20px';
+    chatBubble.style.width = '60px';
+    chatBubble.style.height = '60px';
+    chatBubble.style.borderRadius = '50%';
+    chatBubble.style.backgroundColor = '${botColor}';
+    chatBubble.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.2)';
+    chatBubble.style.display = 'flex';
+    chatBubble.style.justifyContent = 'center';
+    chatBubble.style.alignItems = 'center';
+    chatBubble.style.cursor = 'pointer';
+    chatBubble.style.fontSize = '24px';
+    chatBubble.style.color = 'white';
+    chatBubble.style.transition = 'transform 0.3s, box-shadow 0.3s';
+    chatBubble.innerHTML = '${botIcon}';
+    
+    const notificationBadge = document.createElement('div');
+    notificationBadge.id = 'ia-notification-badge';
+    notificationBadge.style.position = 'absolute';
+    notificationBadge.style.top = '-5px';
+    notificationBadge.style.right = '-5px';
+    notificationBadge.style.backgroundColor = '#FF5252';
+    notificationBadge.style.color = 'white';
+    notificationBadge.style.borderRadius = '50%';
+    notificationBadge.style.width = '20px';
+    notificationBadge.style.height = '20px';
+    notificationBadge.style.fontSize = '12px';
+    notificationBadge.style.display = 'flex';
+    notificationBadge.style.justifyContent = 'center';
+    notificationBadge.style.alignItems = 'center';
+    notificationBadge.style.opacity = '0';
+    notificationBadge.style.transition = 'opacity 0.3s';
+    notificationBadge.textContent = '1';
+    chatBubble.appendChild(notificationBadge);
+    
+    chatBubble.addEventListener('click', () => {
+      chatContainer.style.display = 'block';
+      notificationBadge.style.opacity = '0';
+    });
+    
+    chatBubble.addEventListener('mouseover', () => {
+      chatBubble.style.transform = 'scale(1.05)';
+      chatBubble.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+    });
+    
+    chatBubble.addEventListener('mouseout', () => {
+      chatBubble.style.transform = 'scale(1)';
+      chatBubble.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.2)';
+    });
+    
+    window.addEventListener('message', function(event) {
+      if (event.data === 'closeChat') {
+        chatContainer.style.display = 'none';
+      } else if (event.data === 'newMessage') {
+        if (chatContainer.style.display === 'none') {
+          notificationBadge.style.opacity = '1';
+        }
+      }
+    });
+    
+    setTimeout(() => {
+      notificationBadge.style.opacity = '1';
+    }, 2000);
+    
+    document.body.appendChild(chatBubble);
+    document.body.appendChild(chatContainer);
+  })();
+<\/script>
+<!-- Fin del Widget de Chat IA -->`;
+
+        const codeDiv = document.getElementById('chatbot-code');
+        codeDiv.textContent = widgetCode;
+        codeDiv.classList.remove('hidden');
+        
+        const copyBtn = document.getElementById('copy-code-btn');
+        copyBtn.classList.remove('hidden');
+
+        const previewPlaceholder = document.getElementById('preview-placeholder');
+        previewPlaceholder.classList.add('hidden');
+        
+        const previewDiv = document.getElementById('chatbot-preview');
+        previewDiv.classList.remove('hidden');
+        previewDiv.innerHTML = `<iframe src="${API_BASE_URL}/api/chatbot/${chatbotId}?color=${encodeURIComponent(botColor)}&name=${encodeURIComponent(botName)}&icon=${encodeURIComponent(botIcon)}&mode=iframe" style="width:100%; height:100%; border:none;"></iframe>`;
+      };
+    });
+  </script>
+</body>
+</html>
