@@ -22,11 +22,5 @@
         "cache-control": "public, max-age=0, must-revalidate"
       }
     }
-  ],
-  "functions": {
-    "api/index.js": {
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  }
+  ]
 }
